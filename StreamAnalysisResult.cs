@@ -17,7 +17,7 @@ namespace TMech.AudioNormalizer
         public string SampleRate { get; set; } = string.Empty;
 
         [JsonPropertyName("channels")]
-        public string Channels { get; set; } = string.Empty;
+        public int Channels { get; set; }
 
         [JsonPropertyName("bit_rate")]
         public string BitRate { get; set; } = string.Empty;

@@ -1,0 +1,102 @@
+🎧 Overview of the Two-Pass Workflow
+
+You’ll run:
+
+Pass 1: Analyze loudness and extract normalization stats.
+Probe: Extract original codec, bitrate, sample rate, and channels.
+Pass 2: Apply normalization using extracted stats and re-encode using original settings.
+
+🧪 Step-by-Step Commands
+
+✅ 1. Loudness Analysis (Pass 1)
+
+ffmpeg -i input.ext -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json -f null - 2> loudness.json
+
+-16 LUFS is common for music (Spotify, YouTube).
+2> redirects stderr (where FFmpeg prints filter logs) to a file.
+loudness.json will contain the measured values.
+
+✅ 2. Extract Measured Values from loudness.json
+
+Parse and extract:
+
+| JSON Key                            | FFmpeg Param in Pass 2  |
+| input_i                             | measured_I              |
+| input_tp                            | measured_TP             |
+| input_lra                           | measured_LRA            |
+| input_thresh                        | measured_thresh         |
+| target_offset                       | offset                  |
+| normalization_type (linear|dynamic) | linear=true|false       |
+
+✅ 3. Extract Original Encoding Settings
+
+Use ffprobe:
+
+ffprobe -v error -select_streams a:0 -show_entries stream=codec_name,bit_rate,sample_rate,channels -of json input.ext > encoding.json
+
+This returns:
+
+{
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+        {
+            "codec_name": "mp3",
+            "sample_rate": "44100",
+            "channels": 2,
+            "bit_rate": "320000"
+        }
+    ]
+}
+
+✅ 4. Strip ReplayGain Metadata
+To remove ReplayGain while preserving other tags:
+
+ffmpeg -i input.ext \
+-map_metadata 0 \
+-metadata REPLAYGAIN_TRACK_GAIN= \
+-metadata REPLAYGAIN_ALBUM_GAIN= \
+-metadata REPLAYGAIN_TRACK_PEAK= \
+-metadata REPLAYGAIN_ALBUM_PEAK= \
+-c copy cleaned.ext
+
+✅ 5. Apply Normalization (Pass 2)
+Build your command dynamically:
+
+ffmpeg -i input.ext \
+-af loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=-27.45:measured_TP=-1.20:measured_LRA=5.30:measured_thresh=-37.20:offset=3.45:linear=true \
+-c:a libmp3lame -b:a 192k -ar 44100 -ac 2 output.ext
+
+Replace libmp3lame with aac, libopus, etc., based on codec_name.
+Use extracted bit_rate, sample_rate, and channels.
+
+🎧 FFmpeg Encoding Arguments by File Type
+
+Format      | Codec           | Recommended FFmpeg Arguments            | Notes                                     |
+MP3         | libmp3lame      | -c:a libmp3lame -q:a 0                  | VBR ~245 kbps, highest quality            |
+            |                 | -c:a libmp3lame -b:a 256k               | CBR 256 kbps, if you prefer fixed bitrate |
+AAC (M4A)   | aac (built-in)  | -c:a aac -b:a 192k -movflags +faststart | Good quality, widely supported            |
+            | libfdk_aac      | -c:a libfdk_aac -b:a 192k               | Better quality, if available              |
+Opus        | libopus         | -c:a libopus -b:a 128k                  | Transparent for most music                |
+            |                 | -c:a libopus -b:a 160k                  | Slightly higher quality for legacy files  |
+
+-------------------------------------------------------------------------TEST DATA:
+
+.\ffmpeg.exe -i 'C:\Users\thoma\Music\New\Portishead\(1997) Portishead\04 Half Day Closing.mp3' -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json -f null -
+
+.\ffprobe.exe -v error -select_streams a:0 -show_entries stream=codec_name,bit_rate,sample_rate,channels -of json 'C:\Users\thoma\Music\New\Portishead\(1997) Portishead\04 Half Day Closing.mp3'
+
+"streams": [
+    {
+        "codec_name": "mp3",
+        "sample_rate": "44100",
+        "channels": 2,
+        "bit_rate": "320000"
+    }
+]
+
+.\ffmpeg -i 'C:\Users\thoma\Music\New\Portishead\(1997) Portishead\04 Half Day Closing.mp3' \
+-af loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=-27.45:measured_TP=-1.20:measured_LRA=5.30:measured_thresh=-37.20:offset=3.45:linear=true \
+-c:a libmp3lame -b:a 192k -ar streams.sample_rate -ac streams.channels output.ext
+
+dotnet run -inputDir='C:\temp\music' -outputDir='C:\temp' -ffmpegDir='C:\dev\tools\ffmpeg'

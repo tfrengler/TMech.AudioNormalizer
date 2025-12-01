@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace TMech.AudioNormalizer;
@@ -10,18 +11,24 @@ namespace TMech.AudioNormalizer;
 
 internal static class Program
 {
+    public static Logger Log {get; private set;} = null!;
+
     internal static async Task<int> Main(string[] args)
     {
         var config = new Config(args);
+
+        string outputPath = Path.Combine(config.OutputDir.FullName, "AudioNormalizer.log");
+        Log = new Logger(new FileInfo(outputPath));
 
         var audioFiles = config.InputDir
             .EnumerateFiles()
             .Where(file =>
             {
+                string fileExt = file.Extension.Trim();
                 return
-                    file.Extension.Equals(".mp3", System.StringComparison.OrdinalIgnoreCase) ||
-                    file.Extension.Equals(".opus", System.StringComparison.OrdinalIgnoreCase) ||
-                    file.Extension.Equals(".m4a", System.StringComparison.OrdinalIgnoreCase);
+                    // fileExt.EndsWith(".mp3", System.StringComparison.OrdinalIgnoreCase) ||
+                    // fileExt.EndsWith(".opus", System.StringComparison.OrdinalIgnoreCase) ||
+                    fileExt.EndsWith(".m4a", System.StringComparison.OrdinalIgnoreCase);
             })
             .ToList();
 
@@ -37,6 +44,8 @@ internal static class Program
             config.FfprobeFile is null ? "ffprobe" : config.FfprobeFile.FullName,
             config.OutputDir.FullName
         );
+
+        // await ProcessAudioFile(ffmpeg, audioFiles[0]);
 
         var audioNormalizer = new AudioNormalizer(ffmpeg, audioFiles);
         await audioNormalizer.Start();
