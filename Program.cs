@@ -12,27 +12,29 @@ namespace TMech.AudioNormalizer;
 internal static class Program
 {
     public static Logger Log {get; private set;} = null!;
+    public static Config Config { get; private set; } = null!;
 
     internal static async Task<int> Main(string[] args)
     {
-        var config = new Config(args);
+        Config = new Config(args);
 
-        string outputPath = Path.Combine(config.OutputDir.FullName, "AudioNormalizer.log");
+        string outputPath = Path.Combine(Config.OutputDir.FullName, "AudioNormalizer.log");
         Log = new Logger(new FileInfo(outputPath));
 
-        var audioFiles = config.InputDir
+        var audioFiles = Config.InputDir
             .EnumerateFiles()
             .Where(file =>
             {
                 string fileExt = file.Extension.Trim();
                 return
-                    // fileExt.EndsWith(".mp3", System.StringComparison.OrdinalIgnoreCase) ||
-                    // fileExt.EndsWith(".opus", System.StringComparison.OrdinalIgnoreCase) ||
+                    fileExt.EndsWith(".mp3", System.StringComparison.OrdinalIgnoreCase) ||
+                    fileExt.EndsWith(".opus", System.StringComparison.OrdinalIgnoreCase) ||
                     fileExt.EndsWith(".m4a", System.StringComparison.OrdinalIgnoreCase);
             })
             .ToList();
 
-        System.Console.WriteLine($"Found {audioFiles.Count} audio files to normalize");
+        System.Console.WriteLine($"Found {audioFiles.Count} audio file(s) to normalize (loudness target: {FfmpegService.IntegratedLoudnessTarget})");
+
         if (audioFiles.Count == 0)
         {
             System.Console.WriteLine("Nothing to do, quitting");
@@ -40,12 +42,10 @@ internal static class Program
         }
 
         var ffmpeg = new FfmpegService(
-            config.FfmpegFile is null ? "ffmpeg" : config.FfmpegFile.FullName,
-            config.FfprobeFile is null ? "ffprobe" : config.FfprobeFile.FullName,
-            config.OutputDir.FullName
+            Config.FfmpegFile is null ? "ffmpeg" : Config.FfmpegFile.FullName,
+            Config.FfprobeFile is null ? "ffprobe" : Config.FfprobeFile.FullName,
+            Config.OutputDir.FullName
         );
-
-        // await ProcessAudioFile(ffmpeg, audioFiles[0]);
 
         var audioNormalizer = new AudioNormalizer(ffmpeg, audioFiles);
         await audioNormalizer.Start();

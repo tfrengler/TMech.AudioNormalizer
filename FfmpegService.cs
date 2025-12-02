@@ -13,9 +13,9 @@ public sealed class FfmpegService
     private readonly string _ffprobeCommand;
     private readonly string _outputDir;
 
-    private const string IntegratedLoudnessTarget = "-16.0";
-    private const string MaxTruePeak = "-1.5";
-    private const string LoudnessRangeTarget = "11.0";
+    public const string IntegratedLoudnessTarget = "-16.0";
+    public const string MaxTruePeak = "-1.5";
+    public const string LoudnessRangeTarget = "11.0";
 
     public FfmpegService(string ffmpegCommand, string ffprobeCommand, string outputDir)
     {
@@ -187,11 +187,11 @@ public sealed class FfmpegService
         }
 
         Debug.Assert(returnData.Streams is not null);
-        Debug.Assert(returnData.Streams.Length > 0);
-        Debug.Assert(!string.IsNullOrWhiteSpace(returnData.Streams[0].CodecName));
-        Debug.Assert(!string.IsNullOrWhiteSpace(returnData.Streams[0].SampleRate));
-        // Debug.Assert(!string.IsNullOrWhiteSpace(returnData.Streams[0].BitRate));
-        Debug.Assert(returnData.Streams[0].Channels > 0);
+        //Debug.Assert(returnData.Streams.Length > 0);
+        //Debug.Assert(!string.IsNullOrWhiteSpace(returnData.Streams[0].CodecName));
+        //Debug.Assert(!string.IsNullOrWhiteSpace(returnData.Streams[0].SampleRate));
+        //Debug.Assert(!string.IsNullOrWhiteSpace(returnData.Streams[0].BitRate));
+        //Debug.Assert(returnData.Streams[0].Channels > 0);
 
         return new()
         {
@@ -290,6 +290,14 @@ public sealed class FfmpegService
         ];
 
         EncodingData encodingData = DetermineEncodingData(streamData);
+        if (encodingData.Codec == "<:INVALID:>")
+        {
+            return new()
+            {
+                Success = false,
+                Output = "Unsupported codec: " + streamData.Streams[0].CodecName
+            };
+        }
 
         // ffmpeg -i input.ext -af loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=-27.45:measured_TP=-1.20:measured_LRA=5.30:measured_thresh=-37.20:offset=3.45:linear=true -c:a libmp3lame -b:a 192k -ar 44100 -ac 2 output.ext
         var process = ProcessHelper
@@ -299,6 +307,8 @@ public sealed class FfmpegService
             .WithArgument(file.FullName)
             .WithArgument("-af")
             .WithArgument($"loudnorm={string.Join(':', loudnormInputData)}")
+            .WithArgument("-c:v")
+            .WithArgument("copy")
             .WithArgument("-c:a")
             .WithArgument(encodingData.Codec)
             .WithArgument(encodingData.BitrateOrQuality[0])
@@ -307,13 +317,11 @@ public sealed class FfmpegService
             .WithArgument(encodingData.SampleRate)
             .WithArgument("-ac")
             .WithArgument(encodingData.Channels)
-            .WithArgument(outputFile)
-            .WithArguments(encodingData.ExtraArguments);
+            .WithArguments(encodingData.ExtraArguments)
+            .WithArgument(outputFile);
 
-        System.Console.WriteLine("Starting process");
         ProcessResult result = await process.Run();
         List<string> output = result.Errors;
-        System.Console.WriteLine($"Process finished ({result.Status})");
 
         if (result.Status != ProcessStatus.OK)
         {
@@ -326,16 +334,13 @@ public sealed class FfmpegService
             };
         }
 
-        System.Console.WriteLine("Refreshing output file metadata");
         returnData.Refresh();
         bool failure = !returnData.Exists || (returnData.Exists && returnData.Length == 0);
 
-        System.Console.WriteLine($"Ffmpeg failed? {failure}");
         if (failure)
         {
             if (returnData.Exists) returnData.Delete();
 
-            System.Console.WriteLine($"Return failure");
             return new()
             {
                 Success = false,
@@ -345,7 +350,6 @@ public sealed class FfmpegService
             };
         }
 
-        System.Console.WriteLine($"Return success");
         return new()
         {
             Success = true,
@@ -390,7 +394,8 @@ public sealed class FfmpegService
                 break;
 
             default:
-                throw new System.Exception($"Unsupported codec: {streamData.CodecName}");
+                returnData.Codec = "<:INVALID:>";
+                break;
         }
 
         return returnData;
