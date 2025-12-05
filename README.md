@@ -14,7 +14,7 @@ The project is provided here in public **as-is**. It is open-source but not open
 
 # What it does do and what it cannot do
 
-It is designed to work on audio-file with a single audio stream (different than channels). It currently works on **mp3, opus and aac** files only. It works on a single input directory (no recursion) and outputs the files to an output directory. The original files are left untouched.
+It is designed to work on music files with a single audio stream (different than channels). It currently works on **mp3, opus and aac** files only. It works on a single input directory (no recursion) and outputs the files to an output directory. The original files are left untouched.
 
 It first strips the files of any existing ReplayGain-tags, then analyzes the current loudness level and if it's not within the loudness treshold (-16.0 LUFS +/- 1.0) it is normalized. These levels are hardcoded and cannot be changed. The files are processed concurrently 4 at a time (this also not configureable).
 
@@ -67,10 +67,6 @@ To minimize the quality loss the files are encoded using - potentially - higher 
 MP3             | VBR (Variable Bitrate) ~245 kbps, highest quality. |
 OPUS            | 160 kbps |
 AAC             | 192 kbps. In addition AAC files have their metadata moved to the beginning of the file so they are more streaming friendly (using the +faststart flag) |
-
-MP3  => VBR (Variable Bitrate) ~245 kbps, highest quality.
-OPUS => 160 kbps
-AAC  => 192 kbps. In addition AAC files have their metadata moved to the beginning of the file so they are more streaming friendly (using the +faststart flag)
 
 As a result some files might be smaller in size (particularly mp3 which are often in CBR 320 kpbs) but could also be bigger.
 
