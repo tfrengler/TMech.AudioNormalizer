@@ -2,9 +2,9 @@
 
 A hobby project where I made a program that's a wrapper for using ffmpeg's loudnorm filter to normalize the loudness level of audio files. 'Why', you might ask, when other programs/scripts exist that already do the same? Because:
 
-1: I had a 3000+ music collection of assorted file-formats I wanted to properly normalize that I have been collecting and curating for over 20 years.
-2: I love programming and particularly making stuff myself.
-3: It's a great learning experience, particulary doing things I hadn't done much before (working more extensively with external programs).
+1. I had a 3000+ music collection of assorted file-formats I wanted to properly normalize that I have been collecting and curating for over 20 years.
+1. I love programming and particularly making stuff myself.
+1. It's a great learning experience, particulary doing things I hadn't done much before (working more extensively with external programs).
 
 One of the traditional ways to normalize audio files was using metadata embedded in the files, typically via ReplayGain. This approach has fallen out of favour in later years due to several factors. One of those is you would only get normalized sound on players that support ReplayGain and another is that not all audio format supports ReplayGain metadata in the first place.
 
@@ -62,7 +62,13 @@ The final pass is when the audio file is actually normalized. Again the stripped
 
 To minimize the quality loss the files are encoded using - potentially - higher settings than the original file was encoded in:
 
-MP3  => VBR (Variable Bitrate) ~245 kbps, highest quality
+| Format        | Encoding      |
+| -----------   | -----------   |
+MP3             | VBR (Variable Bitrate) ~245 kbps, highest quality. |
+OPUS            | 160 kbps |
+AAC             | 192 kbps. In addition AAC files have their metadata moved to the beginning of the file so they are more streaming friendly (using the +faststart flag) |
+
+MP3  => VBR (Variable Bitrate) ~245 kbps, highest quality.
 OPUS => 160 kbps
 AAC  => 192 kbps. In addition AAC files have their metadata moved to the beginning of the file so they are more streaming friendly (using the +faststart flag)
 
